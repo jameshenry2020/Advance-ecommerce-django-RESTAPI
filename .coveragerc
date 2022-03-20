@@ -1,0 +1,7 @@
+[run]
+source=account/,products/
+omit=
+    denv
+    */migrations/*
+    */test/*
+    */__init__.py
