@@ -1,111 +1,79 @@
 from django.db import models
-from django.apps import apps
-from django.contrib.auth.hashers import make_password
-from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.base_user import BaseUserManager
+from django.utils.translation import ugettext_lazy as _
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
-from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.contrib.auth.models import AbstractBaseUser, UserManager,PermissionsMixin
-import jwt
-from datetime import datetime, timedelta
-from django.conf import settings
 
-# Create your models here.
+class EstoreUserManager(BaseUserManager):
 
-
-
-class MyUserManager(UserManager):
-    def _create_user(self, first_name, last_name, username, email, phone, password, **extra_fields):
+    def create_user(self, email, first_name, last_name,  phone, password=None):
         """
-        Create and save a user with the given username, email, and password.
+        Create and save a User with the given email and password.
         """
-
-        if not first_name:
-            raise ValueError('please enter your first name')
-        if not last_name:
-            raise ValueError('please enter your last name')
-        if not username:
-            raise ValueError('The given username must be set')
         if not email:
-            raise ValueError('Email is required')
-        
-        if not phone:
-            raise ValueError('please provide a valid phone number')
+            raise ValueError(_('The Email must be set'))
         email = self.normalize_email(email)
-        # Lookup the real model class from the global app registry so this
-        # manager method can be used in migrations. This is fine because
-        # managers are by definition working on the real model.
-        GlobalUserModel = apps.get_model(self.model._meta.app_label, self.model._meta.object_name)
-        username = GlobalUserModel.normalize_username(username)
-        user = self.model(username=username, email=email,phone=phone,first_name=first_name, last_name=last_name, **extra_fields)
-        user.password = make_password(password)
+        if not first_name:
+            raise ValueError(_('please provide your first name'))
+        if not last_name:
+            raise ValueError(_('please provide your last name'))
+        if not phone:
+            raise ValueError(_('please provide an active phone number'))
+
+        user = self.model(email=email, first_name=first_name, last_name=last_name,  phone=phone)
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_user(self, first_name, last_name, username, email, phone,  password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', False)
-        extra_fields.setdefault('is_superuser', False)
-        return self._create_user(first_name, last_name, username, email, phone,password, **extra_fields)
-
-    def create_superuser(self,first_name, last_name,  username, email, phone, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
-        return self._create_user(first_name, last_name, username, email, password, phone, **extra_fields)
-
-
-class MyUser(AbstractBaseUser,PermissionsMixin):
-    username_validator = UnicodeUsernameValidator()
-
-    username = models.CharField(
-        _('username'),
-        max_length=150,
-        unique=True,
-        help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
-        validators=[username_validator],
-        error_messages={
-            'unique': _("A user with that username already exists."),
-        },
-    )
-    first_name = models.CharField(_('first name'), max_length=150)
-    last_name = models.CharField(_('last name'), max_length=150)
-    email = models.EmailField(_('email address'), blank=False, unique=True)
-    phone=models.CharField(max_length=15)
-    is_staff = models.BooleanField(
-        _('staff status'),
-        default=False,
-        help_text=_('Designates whether the user can log into this admin site.'),
-    )
-    is_active = models.BooleanField(
-        _('active'),
-        default=True,
-        help_text=_(
-            'Designates whether this user should be treated as active. '
-            'Unselect this instead of deleting accounts.'
-        ),
-    )
-    email_verified=models.BooleanField(
-        _('email_verified'),
-        default=False,
-        help_text=_(
-            'Designates that this users email is verified'
+    def create_superuser(self, email, first_name,last_name,  phone, password=None):
+        """
+        Create and save a SuperUser with the given email and password.
+        """
+        user = self.create_user(
+            email,
+            first_name,
+            last_name,
+            phone,
+            password=password,
+        )
+        user.is_admin = True
+        user.save(using=self._db)
+        return user
         
-        ),
-    )
-    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
-    objects = MyUserManager()
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    username=None
+    email=models.EmailField(_('email address'), unique=True)
+    first_name=models.CharField(max_length=255, blank=False, null=False)
+    last_name=models.CharField(max_length=255, blank=False, null=False) 
+    phone=models.CharField(max_length=12)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    is_admin = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(default=timezone.now)
 
-    EMAIL_FIELD = 'email'
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'phone']
+    USERNAME_FIELD='email'
+    REQUIRED_FIELDS=['first_name', 'last_name',  'phone']
+
+    objects=EstoreUserManager()
+
+    def __str__(self): 
+        return self.email
+
+    def has_perm(self, perm, obj=None):
+        "Does the user have a specific permission?"
+        # Simplest possible answer: Yes, always
+        return True
+
+    def has_module_perms(self, app_label):
+        "Does the user have permissions to view the app `app_label`?"
+        # Simplest possible answer: Yes, always
+        return True
 
     @property
-    def token(self):
-        token=jwt.encode({'username':self.username, 'email':self.email, 'phone':self.phone, 'exp':datetime.utcnow()+timedelta(hours=15)}, settings.SECRET_KEY, algorithm="HS256")
-        return token
+    def is_staff(self):
+        "Is the user a member of staff?"
+        # Simplest possible answer: All admins are staff
+        return self.is_admin
 
+    
