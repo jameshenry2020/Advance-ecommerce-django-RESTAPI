@@ -32,6 +32,11 @@ class Variation(models.Model):
     item=models.ForeignKey(Product, on_delete=models.CASCADE)
     name=models.CharField(max_length=200) #size or color
 
+    class Meta:
+        unique_together=(
+            ('item', 'name')
+        )
+
     def __str__(self):
         return self.name
 
@@ -40,6 +45,10 @@ class ItemVariation(models.Model):
     variation=models.ForeignKey(Variation, on_delete=models.CASCADE)
     value=models.CharField(max_length=50)# e.g small, medium or large
     
+    class Meta:
+        unique_together=(
+            ('variation', 'value')
+        )
     def __str__(self):
         return self.value
 
