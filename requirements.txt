@@ -1,6 +1,7 @@
 asgiref==3.4.1
 coverage==6.1.1
 Django==3.2.8
+django-cors-headers==3.11.0
 django-dotenv==1.4.2
 djangorestframework==3.12.4
 Pillow==8.4.0
