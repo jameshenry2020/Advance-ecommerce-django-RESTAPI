@@ -19,7 +19,17 @@ class TopProductListView(ListAPIView):
     permission_classes=[AllowAny]
 
     def get_queryset(self):
-        result=self.queryset.filter(rating__gte=4).order_by('-rating')[0:6]
+        result=self.queryset.filter(rating__gte=4).order_by('-rating')[0:8]
+        return result
+
+
+class LatestProductListView(ListAPIView):
+    queryset=Product.objects.all()
+    serializer_class=ProductSerializer
+    permission_classes=[AllowAny]
+
+    def get_queryset(self):
+        result=self.queryset.filter(category='hoodies').order_by('-created_at')[0:6]
         return result
 
 class ProductDetailView(RetrieveAPIView):
