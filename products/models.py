@@ -66,6 +66,7 @@ class Reviews(models.Model):
 
 class OrderItem(models.Model):
     product=models.ForeignKey(Product, on_delete=models.CASCADE)
+    user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
     item_variations=models.ManyToManyField(ItemVariation)
     quantity=models.IntegerField(default=1)
     completed=models.BooleanField(default=False)
@@ -74,6 +75,13 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"orderitem-{self.sub_price}"
+
+    def get_total_item_price(self):
+        return self.quantity * self.product.price
+
+    def get_final_total_price(self):
+        return self.get_total_item_price()
+
 
 class ShippingAddress(models.Model):
     user=models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -84,19 +92,25 @@ class ShippingAddress(models.Model):
 
 class Order(models.Model):
     user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
-    paymentMethod=models.CharField(max_length=50)
+    paymentMethod=models.CharField(max_length=50, blank=True, null=True)
     reference_code=models.CharField(max_length=20, blank=True, null=True)
-    shippingAd=models.ForeignKey(ShippingAddress, related_name='shipping_address', on_delete=models.SET_NULL, null=True)
-    shippingFee=models.DecimalField(max_digits=7, decimal_places=2)
-    totalPrice=models.DecimalField(max_digits=8, decimal_places=2)
+    items=models.ManyToManyField(OrderItem)
+    shippingAd=models.ForeignKey(ShippingAddress, related_name='shipping_address', on_delete=models.SET_NULL, blank=True, null=True)
+    shippingFee=models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)
     isPaid=models.BooleanField(default=False)
     being_delivered=models.BooleanField(default=False)
     isReceived=models.BooleanField(default=False)
-    paidAt=models.DateTimeField()
-    deliveredAt=models.DateTimeField()
+    paidAt=models.DateTimeField(blank=True, null=True)
+    deliveredAt=models.DateTimeField(blank=True, null=True)
 
     createdAt=models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.createdAt)
+
+    def get_total(self):
+        total=0
+        for order_item in self.items.all():
+            total +=order_item.get_final_total_price()
+        return total
 
