@@ -1,4 +1,5 @@
 from operator import mod
+from sqlite3 import Timestamp
 from django.db import models
 from account.models import CustomUser
 # Create your models here.
@@ -89,10 +90,14 @@ class ShippingAddress(models.Model):
     city=models.CharField(max_length=100)
     postal_code=models.CharField(max_length=10)
     address=models.CharField(max_length=200)
+    default_add=models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"deliver order to-{self.city}-{self.id}"
 
 class Order(models.Model):
     user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
-    paymentMethod=models.CharField(max_length=50, blank=True, null=True)
+    payment=models.ForeignKey('TransactionHistory', on_delete=models.SET_NULL, null=True, blank=True)
     reference_code=models.CharField(max_length=20, blank=True, null=True)
     items=models.ManyToManyField(OrderItem)
     shippingAd=models.ForeignKey(ShippingAddress, related_name='shipping_address', on_delete=models.SET_NULL, blank=True, null=True)
@@ -112,5 +117,17 @@ class Order(models.Model):
         total=0
         for order_item in self.items.all():
             total +=order_item.get_final_total_price()
+        if self.shippingFee is not None:
+            final_total= total + self.shippingFee
+            return final_total
         return total
 
+
+class TransactionHistory(models.Model):
+    stripe_customer_id=models.CharField(max_length=50)
+    amount=models.DecimalField(max_digits=8, decimal_places=2)
+    user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp=models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.user.first_name

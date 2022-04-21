@@ -121,3 +121,57 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_total(self, obj):
         return obj.get_total()
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=ShippingAddress
+        fields=['id','country', 'city', 'postal_code', 'address', 'default_add']
+
+
+    def create(self, validated_data):
+        instance=ShippingAddress.objects.create(**validated_data)
+        request=self.context.get('request')
+        order_qs=Order.objects.filter(user=request.user, isPaid=False)
+        if order_qs.exists():
+            order=order_qs[0]
+            order.shippingAd=instance
+            order.shippingFee=200 #suppose to create a mechansim to calculate shipping fee
+            order.save()
+        return instance
+
+
+
+class CompletedOrderSerializer(serializers.ModelSerializer):
+    order_items=serializers.SerializerMethodField()
+    address=serializers.SerializerMethodField()
+    total=serializers.SerializerMethodField()
+
+    class Meta:
+        model=Order
+        fields=[
+            'id',
+            'reference_code',
+            'shippingFee',
+            'order_items',
+            'address',
+            'total'
+            'isPaid',
+            'being_delivered'
+        ]
+
+    def get_address(self, obj):
+        addr=obj.shippingAd
+        return AddressSerializer(addr, many=True).data
+
+    def get_order_items(self, obj):
+        return OrderItemSerializer(obj.items.all(), many=True).data
+
+    def get_total(self, obj):
+        return obj.get_total()
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=TransactionHistory
+        fields=['id', 'amount', 'timestamp']
