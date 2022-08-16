@@ -22,7 +22,7 @@ import random
 
 stripe.api_key =settings.STRIPE_SECRET_KEY
 
-endpoint_secret=settings.WEBHOOK_SECRET
+
 
 def generate_ref_code():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
@@ -177,7 +177,7 @@ class UseDefaultAddressView(APIView):
         if new_order_qs.exists():
             new_order=new_order_qs[0]
             new_order.shippingAd=address
-            new_order.shippingFee=200.0
+            new_order.shippingFee=20.0
             new_order.save()
             return Response(status=status.HTTP_200_OK)
         return Response({'message':'you do not have any active order'}, status=status.HTTP_400_BAD_REQUEST)
@@ -190,36 +190,46 @@ class GetDeliveryAddress(RetrieveAPIView):
     
     def get_object(self):
         try:
-            address=ShippingAddress.objects.get(user=self.request.user, default_add=True)
+            address=ShippingAddress.objects.get(user=self.request.user, orders__isPaid=False)
             return address
         except ObjectDoesNotExist as e:
             return None
 
-
+class GetDefaultAddress(RetrieveAPIView):
+    serializer_class=AddressSerializer
+    permission_classes=[IsAuthenticated]
+    
+    def get_object(self):
+        try:
+            address=ShippingAddress.objects.get(user=self.request.user, default_add=True)
+            return address
+        except ObjectDoesNotExist as e:
+            return None
 
 class CheckCustomerCardAreadyExists(APIView):
     def get(self, request, *args, **kwargs):
         transactions=TransactionHistory.objects.filter(user=request.user)
         if transactions.exists():
             trans=transactions[0]
-            customer_payment = stripe.Customer.list_payment_methods(
-            trans.stripe_customer_id,
-            type="card"
-            )
-            payment=customer_payment.data[0]
-            card_detail=payment.card
-            return Response({'data':card_detail,'hasCard':True}, status=status.HTTP_200_OK)
+            if trans.stripe_customer_id is not None:
+                customer_payment = stripe.Customer.list_payment_methods(
+                trans.stripe_customer_id,
+                type="card"
+                )
+                payment=customer_payment.data[0]
+                card_detail=payment.card
+                return Response({'data':card_detail,'hasCard':True}, status=status.HTTP_200_OK)
         return Response({'hasCard':False}, status=status.HTTP_200_OK)
         
                 
             
 
 
-
+#api endpoint to use customer saved card for current payment
 class UseCustomerPreviousCard(APIView):
     def post(self, request, *args, **kwargs):
         order=Order.objects.get(user=request.user, isPaid=False)
-        amt=order.get_total()
+        amt=int(order.get_total()) * 100
         user=request.user
         history=TransactionHistory.objects.filter(user=user)
         if history.exists():
@@ -234,10 +244,13 @@ class UseCustomerPreviousCard(APIView):
             customer=customer.stripe_customer_id,
             payment_method=payment_methods.data[0].id,
             off_session=True,
-            confirm=True
+            confirm=True,
+            metadata={
+                       'customer_email':user.email,           
+                    },
            )
             if payment_intent.status == 'succeeded':
-                return Response({'message':' payment Successfully'}, status=status.HTTP_200_OK)
+                return Response({'message':' payment Successfully', 'payment_intent_status':payment_intent.status}, status=status.HTTP_200_OK)
         
         return Response({'message':'this card is invalid please enter a new card'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -249,36 +262,63 @@ class StripeIntentView(APIView):
     def post(self, request, *args, **kwargs):
         user=request.user
         name=f"{user.first_name} {user.last_name}"
-        customer = stripe.Customer.create(name=name,email=user.email, phone=user.phone)
-        try:
-            order_qs=Order.objects.filter(user=user, isPaid=False)
-            if order_qs.exists():
-                order=order_qs[0]
-                amt=order.get_total()   
-                intent = stripe.PaymentIntent.create(
-                    customer=customer['id'],
-                    setup_future_usage='off_session',
-                    amount=int(amt) * 100,
-                    currency=request.data.get('currency', 'usd'),
-                    automatic_payment_methods={
-                        'enabled': True,
-                    },
-                    metadata={
-                        'customer_email':user.email
-                    },
-                )
-                return Response({
-                    'clientSecret': intent['client_secret']
-                }, status=status.HTTP_201_CREATED)
-        except Exception as e:      
-            return Response({'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        #save payment detail for reused by customer
+        saved_card=self.request.data['save_card']
+        if saved_card is True:
+            customer = stripe.Customer.create(name=name,email=user.email, phone=user.phone)
+            try:
+                order_qs=Order.objects.filter(user=user, isPaid=False)
+                if order_qs.exists():
+                    order=order_qs[0]
+                    amt=order.get_total()   
+                    intent = stripe.PaymentIntent.create(
+                        customer=customer['id'],
+                        setup_future_usage='off_session',
+                        amount=int(amt) * 100,
+                        currency=request.data.get('currency', 'usd'),
+                        automatic_payment_methods={
+                            'enabled': True,
+                        },
+                        metadata={
+                            'customer_email':user.email,
+                            'saved_card':True
+                        },
+                    )
+                    return Response({
+                        'clientSecret': intent['client_secret']
+                    }, status=status.HTTP_201_CREATED)
+            except Exception as e:      
+                return Response({'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                order_qs=Order.objects.filter(user=user, isPaid=False)
+                if order_qs.exists():
+                    order=order_qs[0]
+                    amt=order.get_total()   
+                    intent = stripe.PaymentIntent.create(
+                        amount=int(amt) * 100,
+                        currency=request.data.get('currency', 'usd'),
+                        automatic_payment_methods={
+                            'enabled': True,
+                        },
+                        metadata={
+                            'customer_email':user.email,
+                            'saved_card':False
+                        },
+                    )
+                    return Response({
+                        'clientSecret': intent['client_secret']
+                    }, status=status.HTTP_201_CREATED)
+            except Exception as e:      
+                return Response({'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+
 def stripe_webhook_view(request): 
+    endpoint_secret='whsec_231dbbe88ddce282857f9b713195ff914e5b6f91e35225e9f1640ea34952b6c2'
     payload = request.body
     sig_header = request.META['HTTP_STRIPE_SIGNATURE']
     event = None
@@ -294,23 +334,29 @@ def stripe_webhook_view(request):
             # Invalid signature
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    if event['type'] == 'payment_intent.succeeded':
-        intent= event['data']['object']
-         
-        payment_details=intent.charges.data[0]
-        user=CustomUser.objects.get(email=payment_details.receipt_email)
+    if event and event['type']=='payment_intent.succeeded':
+
+        intent = event['data']['object']
+        print(intent)
+        intent_reponse=intent['charges']['data'][0]
+        customer_email=intent_reponse['metadata']['customer_email']
+        amount=intent['amount']
+        user=CustomUser.objects.get(email=customer_email)
         order=Order.objects.get(user=user, isPaid=False)
         #create a transaction history
         history=TransactionHistory.objects.create(
-            stripe_customer_id=payment_details.customer,
-            amount=(payment_details.amount)/100,
-            user=user
-        )
+             stripe_customer_id=intent_reponse['customer'] or None,
+             amount=int(amount)/100,
+             user=user,
+             status='success'
+
+
+         )
         order_items=order.items.all()
         order_items.update(completed=True)
         for item in order_items:
             item.save()
-        #update the order
+            #update the order
         order.isPaid=True
         order.payment=history
         order.reference_code=generate_ref_code()

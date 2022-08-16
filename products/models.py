@@ -75,7 +75,7 @@ class OrderItem(models.Model):
     
 
     def __str__(self):
-        return f"orderitem-{self.sub_price}"
+        return f"orderitem- for-{self.user.first_name}"
 
     def get_total_item_price(self):
         return self.quantity * self.product.price
@@ -91,6 +91,7 @@ class ShippingAddress(models.Model):
     postal_code=models.CharField(max_length=10)
     address=models.CharField(max_length=200)
     default_add=models.BooleanField(default=False)
+    
 
     def __str__(self):
         return f"deliver order to-{self.city}-{self.id}"
@@ -100,7 +101,7 @@ class Order(models.Model):
     payment=models.ForeignKey('TransactionHistory', on_delete=models.SET_NULL, null=True, blank=True)
     reference_code=models.CharField(max_length=20, blank=True, null=True)
     items=models.ManyToManyField(OrderItem)
-    shippingAd=models.ForeignKey(ShippingAddress, related_name='shipping_address', on_delete=models.SET_NULL, blank=True, null=True)
+    shippingAd=models.ForeignKey(ShippingAddress, related_name='orders', on_delete=models.SET_NULL, blank=True, null=True)
     shippingFee=models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)
     isPaid=models.BooleanField(default=False)
     being_delivered=models.BooleanField(default=False)
@@ -124,10 +125,12 @@ class Order(models.Model):
 
 
 class TransactionHistory(models.Model):
-    stripe_customer_id=models.CharField(max_length=50)
+    stripe_customer_id=models.CharField(max_length=50, null=True, blank=True)
     amount=models.DecimalField(max_digits=8, decimal_places=2)
     user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     timestamp=models.DateTimeField(auto_now_add=True)
+    status=models.CharField(max_length=50, null=True, blank=True)
+    
 
     def __str__(self):
         return self.user.first_name

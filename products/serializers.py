@@ -113,7 +113,8 @@ class OrderSerializer(serializers.ModelSerializer):
         fields=(
             'id',
             'order_items',
-            'total'
+            'total',
+            'shippingFee'
         )
 
     def get_order_items(self, obj):
@@ -136,7 +137,7 @@ class AddressSerializer(serializers.ModelSerializer):
         if order_qs.exists():
             order=order_qs[0]
             order.shippingAd=instance
-            order.shippingFee=200 #suppose to create a mechansim to calculate shipping fee
+            order.shippingFee=20 #suppose to create a mechansim to calculate shipping fee
             order.save()
         return instance
 
