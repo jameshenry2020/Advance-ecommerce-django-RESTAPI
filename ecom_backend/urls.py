@@ -8,6 +8,7 @@ from account.views import MyTokenObtainPairView
 urlpatterns =[
     path('admin/', admin.site.urls),
     path('api/auth/', include('account.urls')),
+    path('api/admin/', include('admin_management.urls')),
     path('api/', include('products.urls')),
     path('api/login/', MyTokenObtainPairView.as_view(), name='token_obtain'),
     

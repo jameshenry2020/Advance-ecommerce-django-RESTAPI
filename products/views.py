@@ -396,11 +396,16 @@ class getCompletedOrders(ListAPIView):
 class getCompletedOrderDetail(RetrieveAPIView):
     serializer_class=CompletedOrderSerializer
     permission_classes=[IsAuthenticated]
+    
+    
+    def get_queryset(self):  
+        orders=Order.objects.filter(user=self.request.user, isPaid=True)
+        if orders.exists():
+            return orders
+        return None
 
-    def get_object(self):
-        try:
-            order=Order.objects.get(user=self.request.user, isPaid=True)
-            return order
-        except ObjectDoesNotExist:
-            return Response({'message':'you do not have any order yet'}, status=status.HTTP_204_NO_CONTENT)
+        
+
+    
+        
         

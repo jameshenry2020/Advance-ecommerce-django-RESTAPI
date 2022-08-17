@@ -156,14 +156,15 @@ class CompletedOrderSerializer(serializers.ModelSerializer):
             'shippingFee',
             'order_items',
             'address',
-            'total'
+            'total',
             'isPaid',
-            'being_delivered'
+            'being_delivered',
+            'createdAt'
         ]
 
     def get_address(self, obj):
         addr=obj.shippingAd
-        return AddressSerializer(addr, many=True).data
+        return AddressSerializer(addr, many=False).data
 
     def get_order_items(self, obj):
         return OrderItemSerializer(obj.items.all(), many=True).data
@@ -175,4 +176,4 @@ class CompletedOrderSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model=TransactionHistory
-        fields=['id', 'amount', 'timestamp']
+        fields=['id', 'amount', 'timestamp', 'status']

@@ -20,6 +20,7 @@ urlpatterns=[
     path('check-user-saved/', CheckCustomerCardAreadyExists.as_view(), name='saved-card'),
     path('transaction-history/', getTransactionHistory.as_view(), name='payment-history'),
     path('fetch-completed-orders/', getCompletedOrders.as_view(), name='orders-list'),
+    path('get-user-order-detail/<pk>/', getCompletedOrderDetail.as_view(), name='order-details'),
     path('retrieve-address/', GetDeliveryAddress.as_view(), name='retrieve-address'),
     path('pay-with-default-card/', UseCustomerPreviousCard.as_view(), name='payment-with-default-card'),
     path('payment-webhook/', stripe_webhook_view, name='webhook')
