@@ -30,9 +30,21 @@ class VariationSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    user=serializers.StringRelatedField(read_only=True)
     class Meta:
         model=Product
-        fields='__all__'
+        fields=['id',
+                'user',
+                'productname',
+               'category',
+               'description',
+               'rating',
+               'brand',
+               'image', 
+               'numReviews',
+               'price',
+              'countInstock',
+              'created_at']
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     thumbnails=serializers.SerializerMethodField()
@@ -41,7 +53,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model=Product
         fields=[
             'id',
-             'name',
+             'productname',
              'category',
              'description',
              'rating',
@@ -113,7 +125,8 @@ class OrderSerializer(serializers.ModelSerializer):
         fields=(
             'id',
             'order_items',
-            'total'
+            'total',
+            'shippingFee'
         )
 
     def get_order_items(self, obj):
@@ -136,7 +149,7 @@ class AddressSerializer(serializers.ModelSerializer):
         if order_qs.exists():
             order=order_qs[0]
             order.shippingAd=instance
-            order.shippingFee=200 #suppose to create a mechansim to calculate shipping fee
+            order.shippingFee=20 #suppose to create a mechansim to calculate shipping fee
             order.save()
         return instance
 
@@ -155,14 +168,15 @@ class CompletedOrderSerializer(serializers.ModelSerializer):
             'shippingFee',
             'order_items',
             'address',
-            'total'
+            'total',
             'isPaid',
-            'being_delivered'
+            'being_delivered',
+            'createdAt'
         ]
 
     def get_address(self, obj):
         addr=obj.shippingAd
-        return AddressSerializer(addr, many=True).data
+        return AddressSerializer(addr, many=False).data
 
     def get_order_items(self, obj):
         return OrderItemSerializer(obj.items.all(), many=True).data
@@ -174,4 +188,4 @@ class CompletedOrderSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model=TransactionHistory
-        fields=['id', 'amount', 'timestamp']
+        fields=['id', 'amount', 'timestamp', 'status']

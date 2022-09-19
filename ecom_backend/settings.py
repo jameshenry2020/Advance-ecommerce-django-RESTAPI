@@ -32,7 +32,19 @@ INSTALLED_APPS = [
     'rest_framework',
     'account',
     'products',
+    'admin_management',
+     'drf_yasg',
 ]
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name':'Authorization'
+        }
+    },
+    
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -84,7 +96,7 @@ WSGI_APPLICATION = 'ecom_backend.wsgi.application'
 DATABASES ={
     'default':{
         'ENGINE':'django.db.backends.postgresql_psycopg2',
-        'NAME':'estore',
+        'NAME':'ecommerce',
         'USER':os.environ.get('DB_USERNAME'),#'postgres'
         'PASSWORD':os.environ.get('DB_PWD'), #james123
         'HOST':'localhost',
