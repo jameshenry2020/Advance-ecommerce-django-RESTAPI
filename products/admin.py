@@ -24,9 +24,9 @@ class ProductImgInLine(admin.TabularInline):
     extra =1
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display=['name', 'category', 'brand', 'rating','countInstock', 'price']
-    list_filter= ['name', 'category']
-    search_fields =['name']
+    list_display=['productname', 'category', 'brand', 'rating','countInstock', 'price']
+    list_filter= ['productname', 'category']
+    search_fields =['productname']
     inlines =[ProductImgInLine]
 
 admin.site.register(Product, ProductAdmin)

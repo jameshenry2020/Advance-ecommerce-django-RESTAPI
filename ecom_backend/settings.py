@@ -33,7 +33,18 @@ INSTALLED_APPS = [
     'account',
     'products',
     'admin_management',
+     'drf_yasg',
 ]
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name':'Authorization'
+        }
+    },
+    
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -30,9 +30,21 @@ class VariationSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    user=serializers.StringRelatedField(read_only=True)
     class Meta:
         model=Product
-        fields='__all__'
+        fields=['id',
+                'user',
+                'productname',
+               'category',
+               'description',
+               'rating',
+               'brand',
+               'image', 
+               'numReviews',
+               'price',
+              'countInstock',
+              'created_at']
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     thumbnails=serializers.SerializerMethodField()
@@ -41,7 +53,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model=Product
         fields=[
             'id',
-             'name',
+             'productname',
              'category',
              'description',
              'rating',

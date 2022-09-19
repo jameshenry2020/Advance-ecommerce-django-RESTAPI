@@ -8,9 +8,8 @@ from products.models import *
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from django.db.models import Q
-from django.views.decorators.http import require_http_methods
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -112,7 +111,7 @@ class AddToCart(APIView):
             
 class OrderDetailView(RetrieveAPIView):
     serializer_class=OrderSerializer
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsAdminUser]
     
     def get_object(self):
         try:

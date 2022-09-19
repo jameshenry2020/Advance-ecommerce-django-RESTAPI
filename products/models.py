@@ -7,10 +7,10 @@ from account.models import CustomUser
 
 class Product(models.Model):
     user=models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)#admin user or staff user
-    name=models.CharField(max_length=200)
+    productname=models.CharField(max_length=200)
     category=models.CharField(max_length=200)
     description=models.TextField()
-    rating=models.DecimalField(max_digits=7, decimal_places=2)   
+    rating=models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)   
     brand=models.CharField(max_length=100)
     image=models.ImageField(upload_to='prod_thumbnail')
     numReviews=models.IntegerField(default=0)
@@ -20,14 +20,17 @@ class Product(models.Model):
     
 
     def __str__(self):
-        return self.name
+        return self.productname
 
 class ProductImgs(models.Model):
     item=models.ForeignKey(Product,on_delete=models.CASCADE)
     img=models.ImageField(upload_to='products')
 
+    
+
     def __str__(self):
-        return self.item.name
+        return self.item.productname
+    
 
 class Variation(models.Model):
     item=models.ForeignKey(Product, on_delete=models.CASCADE)
